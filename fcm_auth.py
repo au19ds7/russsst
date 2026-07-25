@@ -8,6 +8,8 @@ community-инструментах (rustplus.js, RustPlusApi, RustCli) для р
 пользователь через официальную страницу Facepunch.
 """
 
+import uuid
+
 import requests
 from push_receiver.android_fcm_register import AndroidFCM
 
@@ -42,18 +44,22 @@ def register_device():
 
 def fetch_expo_push_token(fcm_token: str) -> str:
     """Шаг 2: превращаем сырой FCM-токен в ExponentPushToken[...]."""
+    device_id = str(uuid.uuid4()).lower()
     resp = requests.post(
         EXPO_PUSH_TOKEN_URL,
         json={
-            "deviceId": fcm_token,
-            "deviceToken": fcm_token,
             "type": "fcm",
+            "deviceId": device_id,
+            "deviceToken": fcm_token,
             "development": False,
             "appId": ANDROID_PACKAGE_NAME,
         },
         timeout=15,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        # Показываем точный текст ответа, а не просто код ошибки —
+        # так сразу видно, какое поле сервер считает неверным.
+        raise RuntimeError(f"Expo push token request failed ({resp.status_code}): {resp.text}")
     return resp.json()["data"]["expoPushToken"]
 
 
@@ -78,6 +84,7 @@ def register_with_companion(steam_token: str, expo_push_token: str) -> str:
         json={"AuthToken": steam_token, "DeviceId": "rustplus-tg-bot", "PushKind": 0, "PushToken": expo_push_token},
         timeout=15,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        raise RuntimeError(f"Companion register failed ({resp.status_code}): {resp.text}")
     data = resp.json()
     return data.get("token", steam_token)
