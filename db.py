@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from contextlib import closing
 
@@ -6,6 +7,7 @@ DB_PATH = "/data/rustplus.db"
 
 
 def init_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with closing(sqlite3.connect(DB_PATH)) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pending_link (
